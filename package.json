@@ -1,0 +1,25 @@
+{
+  "name": "tailsquash",
+  "version": "1.0.0",
+  "description": "Predictive Hedged-Request Proxy & Tail-Latency Elimination Fabric",
+  "main": "src/web/server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/web/server.js",
+    "benchmark": "node src/benchmark/run_benchmark.js"
+  },
+  "keywords": [
+    "nutanix",
+    "hedged-requests",
+    "tail-latency",
+    "distributed-systems",
+    "reverse-proxy",
+    "speculative-execution",
+    "p99"
+  ],
+  "author": "TailSquash Team",
+  "license": "MIT",
+  "dependencies": {
+    "pptxgenjs": "^4.0.1"
+  }
+}

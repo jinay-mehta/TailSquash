@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TailSquash - Speculative Reverse Proxy</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <div class="layout-wrapper">
+    <!-- Navigation Header -->
+    <header class="topbar">
+      <div class="brand-block">
+        <div class="brand-logo">TS</div>
+        <div class="brand-info">
+          <h1>TailSquash</h1>
+          <p>Speculative Reverse Proxy - Latency Optimization</p>
+        </div>
+      </div>
+
+      <div class="cluster-indicator">
+        <span class="status-dot"></span>
+        <span id="clusterStatusText">3 Replicas Online</span>
+      </div>
+
+      <div class="action-bar">
+        <button id="btnToggleTraffic" class="btn btn-primary">
+          <span id="btnTrafficText">Start Load</span>
+        </button>
+        <button id="btnBurst" class="btn btn-secondary">
+          <span>Burst 50</span>
+        </button>
+        <button id="btnSingle" class="btn btn-outline">
+          <span>Step</span>
+        </button>
+        <button id="btnReset" class="btn btn-outline">
+          <span>Reset</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Key Metrics Grid -->
+    <main class="content-grid">
+      <section class="stat-cards">
+        <!-- P99 Card -->
+        <div class="card stat-card accent-card">
+          <div class="card-title-row">
+            <span class="card-tag">P99 LATENCY</span>
+            <span class="pill pill-success" id="p99SavingsBadge">--%</span>
+          </div>
+          <div class="dual-metric">
+            <div class="metric-item">
+              <span class="metric-sub">Standard</span>
+              <span class="metric-val text-red" id="stdP99Val">0.0 ms</span>
+            </div>
+            <div class="metric-sep">/</div>
+            <div class="metric-item">
+              <span class="metric-sub">TailSquash</span>
+              <span class="metric-val text-blue" id="hedgeP99Val">0.0 ms</span>
+            </div>
+          </div>
+          <div class="card-caption">99th percentile response time</div>
+        </div>
+
+        <!-- Hedge Overhead -->
+        <div class="card stat-card">
+          <div class="card-title-row">
+            <span class="card-tag">HEDGE OVERHEAD</span>
+            <span class="pill pill-blue" id="budgetStatusBadge">Budget OK</span>
+          </div>
+          <div class="single-metric">
+            <span class="metric-val" id="overheadPercentVal">0.0%</span>
+            <span class="metric-unit">traffic</span>
+          </div>
+          <div class="meter-track">
+            <div class="meter-bar" id="budgetProgressBar" style="width: 0%;"></div>
+          </div>
+          <div class="card-caption">
+            <span id="hedgedCountVal">0</span> hedged of <span id="totalReqVal">0</span> total
+          </div>
+        </div>
+
+        <!-- Speculative Rescues -->
+        <div class="card stat-card">
+          <div class="card-title-row">
+            <span class="card-tag">RESCUED REQUESTS</span>
+            <span class="pill pill-purple" id="hedgeWinsBadge">0</span>
+          </div>
+          <div class="single-metric">
+            <span class="metric-val text-purple" id="hedgesWonVal">0</span>
+            <span class="metric-unit">stalls avoided</span>
+          </div>
+          <div class="card-caption">Replica finished before delayed primary</div>
+        </div>
+
+        <!-- Sockets Aborted -->
+        <div class="card stat-card">
+          <div class="card-title-row">
+            <span class="card-tag">ABORTED CALLS</span>
+            <span class="pill pill-neutral">Cleaned</span>
+          </div>
+          <div class="single-metric">
+            <span class="metric-val text-slate" id="abortedVal">0</span>
+            <span class="metric-unit">connections</span>
+          </div>
+          <div class="card-caption">Slower branches cancelled</div>
+        </div>
+      </section>
+
+      <!-- Charts Section -->
+      <section class="chart-section">
+        <div class="card chart-card flex-2">
+          <div class="card-header-bar">
+            <div>
+              <h3>Request Latency Timeline</h3>
+              <p class="card-subtext">Real-time comparison per incoming request</p>
+            </div>
+            <div class="chart-legend">
+              <span class="legend-chip"><span class="legend-color std-color"></span> Standard</span>
+              <span class="legend-chip"><span class="legend-color hedge-color"></span> TailSquash</span>
+            </div>
+          </div>
+          <div class="chart-wrapper">
+            <canvas id="timelineChart"></canvas>
+          </div>
+        </div>
+
+        <div class="card chart-card flex-1">
+          <div class="card-header-bar">
+            <div>
+              <h3>Percentile Distribution</h3>
+              <p class="card-subtext">P50 through P99.9 latencies (ms)</p>
+            </div>
+          </div>
+          <div class="chart-wrapper">
+            <canvas id="percentileChart"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <!-- Bottom Deck: Controls, Topology, Log -->
+      <section class="bottom-deck">
+        <!-- Chaos Controls -->
+        <div class="card control-card">
+          <div class="card-header-bar">
+            <h3>Latency Simulation</h3>
+            <span class="pill pill-neutral">Fault Injection</span>
+          </div>
+
+          <div class="control-row">
+            <div class="slider-meta">
+              <span>Straggler Rate:</span>
+              <span id="stragglerRateDisplay" class="slider-stat">5.0%</span>
+            </div>
+            <input type="range" id="stragglerSlider" min="0" max="25" step="1" value="5">
+          </div>
+
+          <div class="button-rack">
+            <button id="btnInjectStall" class="btn btn-warning">
+              Force 1000ms Stall
+            </button>
+            <button id="btnDegradeNode" class="btn btn-danger">
+              Degrade Node Beta
+            </button>
+            <button id="btnResetChaos" class="btn btn-outline-sm">
+              Reset
+            </button>
+          </div>
+
+          <div class="info-pill-box">
+            <span>Adaptive Hedge Cutoff:</span>
+            <strong id="dynamicHedgeCutoff">25.0 ms (P90)</strong>
+          </div>
+        </div>
+
+        <!-- Topology Card -->
+        <div class="card topo-card">
+          <div class="card-header-bar">
+            <h3>Cluster Status</h3>
+            <span class="pill pill-neutral">3 Replicas</span>
+          </div>
+
+          <div class="replica-list">
+            <div class="replica-item" id="cardNodeA">
+              <div class="replica-info">
+                <span class="status-dot"></span>
+                <span class="replica-name">Alpha</span>
+                <span class="replica-port">:4001</span>
+              </div>
+              <div class="replica-stats">
+                <span>Reqs: <strong id="nodeAReqs">0</strong></span>
+                <span>Stalls: <strong id="nodeAStalls" class="text-red">0</strong></span>
+              </div>
+            </div>
+
+            <div class="replica-item" id="cardNodeB">
+              <div class="replica-info">
+                <span class="status-dot"></span>
+                <span class="replica-name">Beta</span>
+                <span class="replica-port">:4002</span>
+              </div>
+              <div class="replica-stats">
+                <span>Reqs: <strong id="nodeBReqs">0</strong></span>
+                <span>Stalls: <strong id="nodeBStalls" class="text-red">0</strong></span>
+              </div>
+            </div>
+
+            <div class="replica-item" id="cardNodeC">
+              <div class="replica-info">
+                <span class="status-dot"></span>
+                <span class="replica-name">Gamma</span>
+                <span class="replica-port">:4003</span>
+              </div>
+              <div class="replica-stats">
+                <span>Reqs: <strong id="nodeCReqs">0</strong></span>
+                <span>Stalls: <strong id="nodeCStalls" class="text-red">0</strong></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Telemetry Feed -->
+        <div class="card log-card">
+          <div class="card-header-bar">
+            <h3>Activity Log</h3>
+            <span class="pill pill-green">Live</span>
+          </div>
+          <div class="terminal-feed" id="logStream">
+            <div class="feed-entry init">[SYSTEM] TailSquash proxy running. Awaiting requests...</div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer with Shortcuts -->
+    <footer class="app-footer">
+      <div class="keyboard-hints">
+        <span>Shortcuts:</span>
+        <kbd>Space</kbd> or <kbd>B</kbd> Burst
+        <kbd>S</kbd> Step
+        <kbd>A</kbd> Auto Stream
+        <kbd>R</kbd> Reset
+      </div>
+      <div class="footer-credit">
+        TailSquash - Speculative Hedged Proxy
+      </div>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
