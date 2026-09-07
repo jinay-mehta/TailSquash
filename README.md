@@ -106,11 +106,3 @@ npm run benchmark
 This executes an automated 600-request load test and outputs statistical percentiles for both proxies.
 
 ---
-
-## 7. Suggested Presentation Flow
-
-* **Slide 1 - The Problem:** "The Tail at Scale" in distributed cloud infrastructure. Explain how 1 slow node degrades 50-node fanouts in systems like Nutanix AOS/Prism.
-* **Slide 2 - The Architecture:** TailSquash's dynamic P90 threshold, speculative dual-dispatch, and the Hedge Budget Guard.
-* **Slide 3 - Live Demonstration:** Show the Web Dashboard running side-by-side with continuous traffic. Inject a 1000ms straggler; highlight how the standard proxy spikes while TailSquash stays flat.
-* **Slide 4 - Benchmark Results:** Review the 92.1% P99 reduction table and the sub-5% overhead guarantee.
-* **Slide 5 - Enterprise Impact:** Conclude on enterprise cloud relevance (SLA guarantees, zero downtime, CPU savings).
